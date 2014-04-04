@@ -49,6 +49,7 @@ err_t spwf_httpget(char *url, char *result, int *size);
 err_t spwf_fota(char *url);
 err_t spwf_fsupdate(char *url);
 uint8_t spwf_wifi_connect_wait();
+err_t spwf_configure_uart_speed(uint32_t speed, uint8_t hwfc);
 err_t spwf_reset();
 
 /*

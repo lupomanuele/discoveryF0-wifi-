@@ -93,6 +93,7 @@ void EVAL_WIFI_UART_init(uint32_t baudrate) {
 	USART_ITConfig(WIFI_USART, USART_IT_RXNE, ENABLE);
 
 	NVIC_InitStructure.NVIC_IRQChannel = WIFI_USART_IRQn; // we want to configure the USART2 interrupts
+	NVIC_InitStructure.NVIC_IRQChannelPriority = 0;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;	// the USART2 interrupts are globally enabled
 	NVIC_Init(&NVIC_InitStructure);	// the properties are passed to the NVIC_Init function which takes care of the low level stuff
 

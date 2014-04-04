@@ -9,6 +9,7 @@
  * /TODO More stress tests
  */
 #include "ustime.h"
+#include "strings.h"
 //#include "dysp_plug_rev1.h"
 #include "spwf_wifi.h"
 #include "uart_wifi.h" //low-level API
@@ -23,8 +24,8 @@ extern int my_strstr(char *string1, char *string2);
 extern volatile char received_string[MAX_STRLEN + 1];
 extern void os_Delay(__IO uint32_t nTime);
 wifi_spwf_conf_t spwf_config;
-static unsigned char *miniap_ssid = (unsigned char *) "earthquakeD";
-static char buff[MAX_STRLEN + 1]__attribute__ ((section(".ccm")));
+static unsigned char *miniap_ssid = "earthquakeD";
+static char buff[MAX_STRLEN + 1];
 
 void split_url(char *url, char **server, char **file);
 
@@ -71,21 +72,19 @@ err_t spwf_configure(wifi_spwf_conf_t * cfg, short prog) {
 		wifi_ssid = miniap_ssid;
 		break;
 	case test:
-		sprintf(command, "AT&F\r\n");
-		err = EVAL_WIFI_UART_send_and_test(WIFI_USART, command, "OK", 60,
-				strlen(command));
+		err = EVAL_WIFI_UART_send_and_test(WIFI_USART, _at_f, _ok, 60,
+				strlen(_at_f));
 		if (err != ERR_OK)
 			goto FINISH;
-		sprintf(command, "AT+S.STS\r\n");
-		err = EVAL_WIFI_UART_send_and_test(WIFI_USART, command, "OK", 60,
-				strlen(command));
+		err = EVAL_WIFI_UART_send_and_test(WIFI_USART, _at_sts, _ok, 60,
+				strlen(_at_sts));
 		if (err != ERR_OK)
 			goto FINISH;
 		return err;
 		break;
 	case poweroff:
-		sprintf(command, "AT+S.SCFG=wifi_mode,0\r\n");
-		err = EVAL_WIFI_UART_send_and_test(WIFI_USART, command, "OK", 60,
+		sprintf(command, "%s,0\r\n", _at_wifi_mode);
+		err = EVAL_WIFI_UART_send_and_test(WIFI_USART, command, _ok, 60,
 				strlen(command));
 		return ERR_OK;
 		break;
@@ -93,37 +92,30 @@ err_t spwf_configure(wifi_spwf_conf_t * cfg, short prog) {
 
 	sock_id[0] = 'f';
 
-	// Restore default settings
-//	sprintf(command, "AT&F\r\n");
-//	err = EVAL_WIFI_USART_send_and_test(WIFI_USART, command, "OK", 60,
-//			strlen(command));
-//	if (err != ERR_OK)
-//		goto FINISH;
 	spwf_reset();
 
-	sprintf(command, "AT+S.SCFG=localecho1,0\r\n");
-	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, command, "OK", 60,
-			strlen(command));
+	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, _at_echo1_off, _ok, 60,
+			strlen(_at_echo1_off));
 	if (err != ERR_OK)
 		goto FINISH;
 
 	// Disable Radio
-	sprintf(command, "AT+S.SCFG=wifi_mode,0\r\n");
-	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, command, "OK", 100,
+	sprintf(command, "%s,0\r\n", _at_wifi_mode);
+	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, command, _ok, 100,
 			strlen(command));
 	if (err != ERR_OK)
 		goto FINISH;
 
 	// Configure SSID
 	sprintf(command, "AT+S.SSIDTXT=%s\r\n", wifi_ssid);
-	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, command, "OK", 100,
+	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, command, _ok, 100,
 			strlen(command));
 	if (err != ERR_OK)
 		goto FINISH;
 
 	// Set Encription mode
 	sprintf(command, "AT+S.SCFG=wifi_priv_mode,%d\r\n", wifi_priv);
-	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, command, "OK", 200,
+	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, command, _ok, 200,
 			strlen(command));
 	if (err != ERR_OK)
 		goto FINISH;
@@ -135,35 +127,37 @@ err_t spwf_configure(wifi_spwf_conf_t * cfg, short prog) {
 	memset(token, ' ', sizeof(token));
 	//------------------------------------
 	sprintf(command, "AT+S.SCFG=wifi_wpa_psk_text,%s\r\n", cfg->wpa_key);
-	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, command, "OK", 100,
+	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, command, _ok, 100,
 			strlen(command));
 	if (err != ERR_OK)
 		goto FINISH;
 
 	// Enable DHCP
-	sprintf(command, "AT+S.SCFG=ip_use_dhcp,1\r\n");
-	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, command, "OK", 100,
+	sprintf(command, _at_use_dhcp_1);
+	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, command, _ok, 100,
 			strlen(command));
 	if (err != ERR_OK)
 		goto FINISH;
 
 	// Enable Radio
-	sprintf(command, "AT+S.SCFG=wifi_mode,%d\r", wifi_mode);
-	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, command, "OK", 100,
+	sprintf(command, "%s,%d\r\n", _at_wifi_mode, wifi_mode);
+	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, command, _ok, 100,
 			strlen(command));
 	if (err != ERR_OK)
 		goto FINISH;
 
+	//
+	//spwf_configure_uart_speed(230400,0);
+
 	// Save Configuration
-	sprintf(command, "AT&W\r\n");
-	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, command, "OK", 300,
-			strlen(command));
+	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, _at_w, _ok, 300,
+			strlen(_at_w));
 	if (err != ERR_OK)
 		goto FINISH;
 	// in all cases we reset the wifi module
-	sprintf(command, "AT+CFUN=1\r\n");
-	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, command, "RESET", 250,
-			strlen(command));
+	//sprintf(command, _at_s_cfun_1);
+	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, _at_s_cfun_1, _reset, 250,
+			strlen(_at_s_cfun_1));
 	if (err != ERR_OK)
 		goto FINISH;
 	//spwf_reset();
@@ -182,7 +176,7 @@ err_t spwf_configure(wifi_spwf_conf_t * cfg, short prog) {
  *  Routine wich handle the creation of a TCP socket with the server specified as argument
  */
 int spwf_sock_connect(char *server, short port, char protocol,
-		err_t (*connected)(void *arg, err_t err)) {
+err_t (*connected)(void *arg, err_t err)) {
 	err_t err;
 
 	if (protocol != 't' && protocol != 'u')
@@ -223,7 +217,7 @@ err_t spwf_sock_close(int sockfd) {
 	tmp = (char *) malloc(64);
 	if (tmp) {
 		sprintf(tmp, "AT+S.SOCKC=0%d\r\n", sockfd);
-		EVAL_WIFI_UART_send_and_test(WIFI_USART, (char*) tmp, "OK", 60,
+		EVAL_WIFI_UART_send_and_test(WIFI_USART, (char*) tmp, _ok, 60,
 				strlen(tmp));
 		err = ERR_OK;
 		free(tmp);
@@ -246,16 +240,19 @@ err_t spwf_sock_write(int sockfd, volatile char *packet, int size) {
 	sprintf(tmp, "AT+S.SOCKW=0%d,%d\r\n", sockfd, size);
 	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, tmp, 0, 60, strlen(tmp));
 	if (err) {
-		while (EVAL_WIFI_UART_send_and_test(WIFI_USART, "AT\r\n", "OK", 2, strlen("AT\r\n")))
-			printf("sock_write error hdr\n");
+		while (EVAL_WIFI_UART_send_and_test(WIFI_USART, _at, _ok, 2,
+				strlen(_at)))
+			;
 
 		return err;
 	}
 	os_Delay(10);
-	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, (char*) packet, "OK", 100, size);
+	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, (char*) packet, _ok, 100,
+			size);
 	if (err) {
-		while (EVAL_WIFI_UART_send_and_test(WIFI_USART, "AT\r\n", "OK", 2, strlen("AT\r\n")))
-			printf("sock_write error data\n");
+		while (EVAL_WIFI_UART_send_and_test(WIFI_USART, _at, _ok, 2,
+				strlen(_at)))
+			;
 	}
 
 	return err;
@@ -286,7 +283,7 @@ err_t spwf_sock_read(int sockfd, void *packet, uint8_t *token, int *size) {
 			&& received_string[result_index + 1] == 'A'
 			&& received_string[result_index + 2] == 'T') {
 		uint16_t ok_index = my_strstr(((char*) received_string + result_index),
-				"OK");
+				_ok);
 		if (ok_index < 0) {
 			*size = 0;
 			goto FINISH;
@@ -309,7 +306,7 @@ err_t spwf_sock_read(int sockfd, void *packet, uint8_t *token, int *size) {
 
 	memset(buff, 0, MAX_STRLEN);
 	sprintf(buff, "AT+S.SOCKR=0%d,%d\r\n", sockfd, atoi(datalen));
-	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, buff, "OK", 100,
+	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, buff, _ok, 100,
 			strlen(buff));
 	if (err != ERR_OK) {
 		*size = 0;
@@ -340,7 +337,7 @@ err_t spwf_sock_read(int sockfd, void *packet, uint8_t *token, int *size) {
 				(void *) received_string + result_index + strlen(buff) - 1
 						+ index, i);
 		*size = i;
-	} else if (i>0 && *size == 0) {
+	} else if (i > 0 && *size == 0) {
 		memcpy((void *) packet, (void *) received_string, i);
 		*size = i;
 	} else
@@ -410,7 +407,7 @@ err_t spwf_httpget(char *url, char *result, int *size) {
 	char *server, *file;
 	split_url(url, &server, &file);
 	sprintf(buff, "AT+S.HTTPGET=%s,%s\r\n", server, file);
-	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, (char*) buff, "OK", 400,
+	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, (char*) buff, _ok, 400,
 			strlen(buff));
 	nochars = strlen((char *) received_string);
 	if (nochars > 0) {
@@ -431,35 +428,32 @@ err_t spwf_fota(char *url) {
 	char *server, *file;
 
 	split_url(url, &server, &file);
-	sprintf(buff, "AT+S.SCFG=nv_manuf,ST\r\n");
-	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, (char*) buff, "OK", 60,
-			strlen(buff));
-	sprintf(buff, "AT+S.SCFG=nv_model,SPWF01Sx.1y\r\n");
-	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, (char*) buff, "OK", 60,
-			strlen(buff));
+	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, (char*) _at_nv_manuf, _ok,
+			60, strlen((char*) _at_nv_manuf));
+	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, (char*) _at_nv_model, _ok,
+			60, strlen(_at_nv_model));
 	sprintf(buff, "AT+S.NVW=8675309\r\n");
-	err = EVAL_WIFI_USART_send_and_test(WIFI_USART, (char*) buff, "OK", 60,
+	err = EVAL_WIFI_USART_send_and_test(WIFI_USART, (char*) buff, _ok, 60,
 			strlen(buff));
 
 	//sprintf(buff, "AT+S.FWUPDATE=192.168.1.100,/fw/SPWF01S-140128.ota\r\n", server_addr, server_file_path);
 	sprintf(buff, "AT+S.FWUPDATE=%s,%s\r\n", server, file);
 	do {
-		err = EVAL_WIFI_UART_send_and_test(WIFI_USART, (char*) buff,
-				"Complete", 60000, strlen(buff));
+		err = EVAL_WIFI_UART_send_and_test(WIFI_USART, (char*) buff, _complete,
+				60000, strlen(buff));
 		os_Delay(3000); // Wait 3 seconds before to retry or continue!!
 	} while (err != ERR_OK);
 
 	//TODO all error checking goes here
-	sprintf(buff, "AT+S.CFUN=1\r\n");
-	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, (char*) buff, "RESET", 60,
+	sprintf(buff, _at_s_cfun_1);
+	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, (char*) buff, _reset, 60,
 			strlen(buff));
 
 	while (spwf_wifi_connect_wait())
 		;
 
-	sprintf(buff, "AT&F\r\n");
-	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, buff, "OK", 60,
-			strlen(buff));
+	sprintf(buff, _at_f);
+	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, buff, _ok, 60, strlen(buff));
 
 	return err;
 }
@@ -470,9 +464,8 @@ err_t spwf_fota(char *url) {
  */
 err_t spwf_dafault_restore(void) {
 	err_t err = ERR_OK;
-	sprintf(buff, "AT&F\r\n");
-	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, buff, "OK", 60,
-			strlen(buff));
+	sprintf(buff, _at_f);
+	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, buff, _ok, 60, strlen(buff));
 	return err;
 }
 /**
@@ -488,12 +481,12 @@ err_t spwf_fsupdate(char *url) {
 	sprintf(buff, "AT+S.HTTPDFSUPDATE=%s,%s\r\n", server, file);
 	//sprintf(buff, "AT+S.HTTPDFSUPDATE=www.dsui.it,/st/fw/ext_fs_clean.img\r\n");
 	do {
-		err = EVAL_WIFI_UART_send_and_test(WIFI_USART, (char*) buff,
-				"Complete", 8000, strlen(buff));
+		err = EVAL_WIFI_UART_send_and_test(WIFI_USART, (char*) buff, _complete,
+				8000, strlen(buff));
 		os_Delay(3000);
 	} while (err != ERR_OK);
-	sprintf(buff, "AT+CFUN=1\r\n");
-	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, (char*) buff, "RESET", 100,
+	sprintf(buff, _at_s_cfun_1);
+	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, (char*) buff, _reset, 100,
 			strlen(buff));
 	return err;
 }
@@ -510,6 +503,9 @@ err_t spwf_reset() {
 	os_Delay(10);
 	dysp_wifi_reset(OFF);
 	os_Delay(10);
+#else
+	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, _at_s_cfun_1, _reset, 250,
+			strlen(_at_s_cfun_1));
 #endif
 	return err;
 }
@@ -529,38 +525,6 @@ void spwf_SystemError() {
  * @return 0 if OK. 1 on Error
  */
 uint8_t spwf_wifi_connect_wait() {
-#if 0
-	// Wait WIFI module is connected & And in case alert error!!!!
-	static uint8_t wifiStatus = 0xff;
-	uint8_t retry = 200;
-
-	uint8_t wifiUpPinStatus = GPIO_ReadInputDataBit(WIFI_UP_PORT, WIFI_UP_PIN);
-
-	// Check initial GPIO status
-	if (wifiStatus != 0xff && wifiStatus != wifiUpPinStatus) {
-		wifiStatus = 0xff;
-		return 1; // Connection lost!!
-	} else if (wifiStatus == wifiUpPinStatus) {
-		return 0;
-	}
-
-	// Wait to be connected
-	while (wifiUpPinStatus == GPIO_ReadInputDataBit(WIFI_UP_PORT, WIFI_UP_PIN)) {
-		os_Delay(100);
-		//if (retry-- == 0)
-		//	break;
-
-	}
-
-	// Save the GPIO state
-	wifiStatus = GPIO_ReadInputDataBit(WIFI_UP_PORT, WIFI_UP_PIN);
-
-	//TODO : handle here error connection condition
-	if (retry == 0) {
-		//spwf_SystemError(); // Reset full platform
-		return 1;
-	}
-#endif
 	return GPIO_ReadInputDataBit(WIFI_UP_PORT, WIFI_UP_PIN);
 }
 
@@ -571,8 +535,8 @@ uint8_t spwf_wifi_connect_wait() {
 wifi_mode_t spwf_mode_check() {
 	err_t err = ERR_OK + 1;
 	wifi_mode_t ret = 0;
-	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, "AT+S.GCFG=wifi_mode\r",
-			"OK", 80, 20);
+	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, _at_g_wifi_mode, _ok, 80,
+			20);
 	if (err == ERR_OK) {
 		if (strstr(((char*) received_string), "#  wifi_mode = 1") != NULL) {
 			ret = miniap;
@@ -632,7 +596,7 @@ err_t spwf_ram_file_delete(char *filename) {
 err_t spwf_ram_file_create(char *filename, int maxlen) {
 	char msg[64];
 	sprintf(msg, "AT+S.FSC=/%s,%d\r\n", filename, maxlen);
-	if (EVAL_WIFI_UART_send_and_test(WIFI_USART, msg, "OK", 2, strlen(msg)))
+	if (EVAL_WIFI_UART_send_and_test(WIFI_USART, msg, _ok, 2, strlen(msg)))
 		return ERR_OK + 1;
 
 	return ERR_OK;
@@ -649,7 +613,7 @@ err_t spwf_ram_file_append(char *filename, char *data) {
 	sprintf(msg, "AT+S.FSA=/%s,%d\r", filename, strlen(data));
 	if (EVAL_WIFI_UART_send_and_test(WIFI_USART, msg, NULL, 5, strlen(msg)))
 		return ERR_OK + 1;
-	if (EVAL_WIFI_UART_send_and_test(WIFI_USART, data, "OK", 10, strlen(data)))
+	if (EVAL_WIFI_UART_send_and_test(WIFI_USART, data, _ok, 10, strlen(data)))
 		return ERR_OK + 1;
 
 	return ERR_OK;
@@ -672,6 +636,28 @@ err_t spwf_ram_file_overwrite(char *filename, char *data) {
 	// Append data buffer
 	if (spwf_ram_file_append(filename, data))
 		return ERR_OK + 1;
+
+	return ERR_OK;
+}
+
+/**
+ *
+ * @param speed uart baudrate value.
+ * @param hwfc 1 if enabled . 0 if off.
+ * @return 0 if OK. 1 on Error
+ */
+
+err_t spwf_configure_uart_speed(uint32_t speed, uint8_t hwfc) {
+	char msg[64];
+	sprintf(msg, "AT+S.SCFG=console1_speed,%d\r\n", speed);
+	if (EVAL_WIFI_UART_send_and_test(WIFI_USART, msg, NULL, 5, strlen(msg)))
+		return ERR_OK + 1;
+
+	if (hwfc) {
+		sprintf(msg, "AT+S.SCFG=console1_hwfc,%d\r\n", hwfc);
+		if (EVAL_WIFI_UART_send_and_test(WIFI_USART, msg, NULL, 5, strlen(msg)))
+			return ERR_OK + 1;
+	}
 
 	return ERR_OK;
 }

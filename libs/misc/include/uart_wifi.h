@@ -3,7 +3,7 @@
 
 #include <stm32f0xx_usart.h>
 
-#define MAX_STRLEN 1024 // this is the maximum string length of our string in characters
+#define MAX_STRLEN 512 // this is the maximum string length of our string in characters
 #define EXTI0_1_IRQn 5
 #define WIFI_USART				USART1
 #define WIFI_USART_IRQn			USART1_IRQn
