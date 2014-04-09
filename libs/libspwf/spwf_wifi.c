@@ -147,7 +147,7 @@ err_t spwf_configure(wifi_spwf_conf_t * cfg, short prog) {
 		goto FINISH;
 
 	//
-	//spwf_configure_uart_speed(230400,0);
+	//spwf_configure_uart_speed(115200,1);
 
 	// Save Configuration
 	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, _at_w, _ok, 300,
@@ -238,19 +238,15 @@ err_t spwf_sock_write(int sockfd, volatile char *packet, int size) {
 	err_t err = ERR_OK + 1;
 
 	sprintf(tmp, "AT+S.SOCKW=0%d,%d\r\n", sockfd, size);
-	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, tmp, 0, 60, strlen(tmp));
+	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, tmp, 0, 5, strlen(tmp));
 	if (err) {
-		while (EVAL_WIFI_UART_send_and_test(WIFI_USART, _at, _ok, 2,
-				strlen(_at)))
-			;
-
 		return err;
 	}
-	os_Delay(10);
-	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, (char*) packet, _ok, 100,
+
+	err = EVAL_WIFI_UART_send_and_test(WIFI_USART, (char*) packet, _ok, 10,
 			size);
 	if (err) {
-		while (EVAL_WIFI_UART_send_and_test(WIFI_USART, _at, _ok, 2,
+		while (EVAL_WIFI_UART_send_and_test(WIFI_USART, _at, _ok, 1,
 				strlen(_at)))
 			;
 	}

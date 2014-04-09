@@ -9,7 +9,7 @@
 
 /* ----- SysTick definitions ----------------------------------------------- */
 
-#define SYSTICK_FREQUENCY_HZ       1000
+
 static __IO uint32_t uwTimingDelay;
 #define BLINK_PORT      GPIOC
 #define BLINK_PIN       9

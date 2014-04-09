@@ -9,6 +9,7 @@
 #define TARGET_H_
 
 #include "stm32f0xx.h"
+#define SYSTICK_FREQUENCY_HZ       1000
 
 // ----------------------------------------------------------------------------
 void os_Delay(__IO uint32_t nTime);

@@ -16,12 +16,20 @@
 
 
 /**
- * Demo Defines and Variables
+ * Setup Variables
  */
-#define CHUNK_LEN 	1024
-#define STREAM_SIZE CHUNK_LEN*1024*10
-const char *server_ip_addr = "fitnetfreedom.com"; //"192.168.1.131";
+//const char *server_ip_addr = "fitnetfreedom.com"; //"192.168.1.131";
+const char *server_ip_addr = "192.168.1.105";
 static unsigned int server_port = 5432;
+//const char *ssid = "FASTWEB-1-38229DFC50F4";
+//const char *wpa_key = "6170027600";
+const char *ssid = "IoT";
+const char *wpa_key = "IoT1Time2Go";
+
+/* Main Defines */
+#define CHUNK_LEN 	3*1024
+#define STREAM_SIZE 1024*1024*10
+unsigned char pippo[CHUNK_LEN];
 
 /*
  * Main
@@ -31,14 +39,16 @@ int main(void) {
 	int sock = -1;
 	int err, count;
 	struct wifi_spwf_conf cfg;
-	cfg.baudrate = 115200; //115200; 230400
+	cfg.baudrate = 576000; //115200; 230400 460800
 	cfg.mode = sta;
 	//sprintf(cfg.ssid, "IoT");
 	//sprintf(cfg.wpa_key, "IoT1Time2Go");
-	sprintf(cfg.ssid, "FASTWEB-1-38229DFC50F4");
-	sprintf(cfg.wpa_key, "6170027600");
+	sprintf(cfg.ssid, ssid);
+	sprintf(cfg.wpa_key, wpa_key);
 	main_target_init();
-
+	memset(pippo, 'a', CHUNK_LEN);
+	memset(pippo, 'b', 20);
+	memset(pippo + CHUNK_LEN - 20, 'c', 20);
 	led_set(0);
 
 	int seconds = 0;
@@ -60,7 +70,7 @@ int main(void) {
 		}
 
 		if (sock >= 0 && tot > 0) {
-			err = spwf_sock_write(sock, header_data,
+			err = spwf_sock_write(sock, pippo,
 					(tot < CHUNK_LEN) ? tot : CHUNK_LEN);
 			if (err) {
 				err_stage++;

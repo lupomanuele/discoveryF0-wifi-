@@ -46,6 +46,9 @@ void EVAL_WIFI_UART_init(uint32_t baudrate) {
 	/* Connect PXx to USARTx_Rx */
 	GPIO_PinAFConfig(GPIOA, GPIO_PinSource10, GPIO_AF_1);
 
+	GPIO_PinAFConfig(GPIOA, GPIO_PinSource11, GPIO_AF_1); //CTS
+	GPIO_PinAFConfig(GPIOA, GPIO_PinSource12, GPIO_AF_1); //RTS
+
 	/* Configure USART Tx and Rx as alternate function push-pull */
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_3;
@@ -57,6 +60,20 @@ void EVAL_WIFI_UART_init(uint32_t baudrate) {
 
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
 	GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+#if 1
+	// Configure USART RTS as alternate function
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+	GPIO_InitStructure.GPIO_Pin = GPIO_PinSource11;
+	GPIO_Init (GPIOA, &GPIO_InitStructure);
+
+
+	// Configure USART CTS as alternate function
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+	GPIO_InitStructure.GPIO_Pin = GPIO_PinSource12;
+	GPIO_Init (GPIOA, &GPIO_InitStructure);
+#endif
+
 
 #ifdef USE_DMA_UART
 	/* DMA Configuration -------------------------------------------------------*/
@@ -103,7 +120,7 @@ void EVAL_WIFI_UART_init(uint32_t baudrate) {
 	USART_InitStructure.USART_StopBits = USART_StopBits_1;
 	USART_InitStructure.USART_Parity = USART_Parity_No;
 	USART_InitStructure.USART_HardwareFlowControl =
-	USART_HardwareFlowControl_None;
+	USART_HardwareFlowControl_RTS_CTS; //USART_HardwareFlowControl_None;
 	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
 	USART_Init(WIFI_USART, &USART_InitStructure);
 
@@ -138,9 +155,11 @@ void EVAL_WIFI_UART_puts(USART_TypeDef* USARTx, char *s, int count) {
 	int i = 0;
 
 	while (i < count) {
+		while (USART_GetFlagStatus(USARTx, USART_FLAG_TXE) == RESET)
+			;
 		USART_SendData(USARTx, (uint8_t) s[i++]);
 		//USART_ITConfig(USARTx, USART_IT_TXE, ENABLE);
-		while (USART_GetFlagStatus(USARTx, USART_FLAG_TXE) == RESET)
+		while (USART_GetFlagStatus(USARTx, USART_FLAG_TC) == RESET)
 			;
 	}
 
@@ -190,21 +209,21 @@ uint8_t EVAL_WIFI_UART_send_and_test(USART_TypeDef* USARTx, char *s, char *c,
 		uint32_t timeout, int size) {
 	uint8_t ret = ERR_OK + 1;
 	result_index = -1;
-	int retry = 10;
+	int retry = 2000;
 
 	if (s != NULL) {
 		EVAL_WIFI_UART_cleanupBuffer2RB(USARTx);
 		EVAL_WIFI_UART_puts(USARTx, s, size);
 	}
-	ret = 0;
+	//ret = 0;
 
 	if (!c) {
 		return ERR_OK;
 	}
 
 	WAIT: retry--;
-	if (retry == 0)
-		return ret;
+	//if (retry == 0)
+	//	return ret;
 	os_Delay(timeout);
 
 	if (received_cnt > 0) {
@@ -213,7 +232,8 @@ uint8_t EVAL_WIFI_UART_send_and_test(USART_TypeDef* USARTx, char *s, char *c,
 			ret = ERR_OK;
 		} else
 			goto WAIT;
-	}
+	} else
+		goto WAIT;
 
 	return ret;
 }
